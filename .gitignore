@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
+.ipynb_checkpoints/
+
+# Artefak model besar - tetap boleh dicommit jika ingin dashboard langsung
+# memuat model tersimpan (mode "cepat"). Uncomment baris di bawah jika
+# artefak terlalu besar untuk repo GitHub biasa dan lebih memilih Git LFS.
+# models/*.keras
+# models/*.pkl
+# models/*.joblib
