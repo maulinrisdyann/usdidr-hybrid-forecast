@@ -94,6 +94,81 @@ def plot_forecast(hasil_df: pd.DataFrame, r2_arima: float, r2_hybrid: float):
     return fig
 
 
+def plot_residuals(train_df: pd.DataFrame, test_df: pd.DataFrame):
+    fig, ax = plt.subplots(figsize=(13, 4.5))
+    ax.plot(train_df["Date"], train_df["Residual"], label="Residual - Data Latih")
+    ax.plot(test_df["Date"], test_df["Residual"], label="Residual - Data Uji")
+    ax.axhline(0, color="black", linestyle="--", linewidth=0.8)
+    ax.set_title("Residual ARIMA pada USDIDR_Returns")
+    ax.set_xlabel("Tanggal")
+    ax.set_ylabel("Residual (%)")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    return fig
+
+
+def plot_correlation_heatmap(df: pd.DataFrame):
+    import seaborn as sns
+
+    numeric_df = df.select_dtypes(include=["number"])
+    # Batasi ke kolom non-lag agar heatmap tetap terbaca (kolom lag jumlahnya banyak)
+    base_cols = [c for c in numeric_df.columns if "_Lag_" not in c]
+    corr = numeric_df[base_cols].corr()
+
+    fig, ax = plt.subplots(figsize=(9, 7))
+    sns.heatmap(
+        corr,
+        annot=True,
+        fmt=".2f",
+        cmap="coolwarm",
+        center=0,
+        square=True,
+        linewidths=0.5,
+        ax=ax,
+    )
+    ax.set_title("Matriks Korelasi Antar Variabel (Returns)")
+    fig.tight_layout()
+    return fig
+
+
+def plot_returns_distribution(hasil_df: pd.DataFrame):
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
+
+    axes[0].hist(hasil_df["Actual"], bins=40, color="#2563eb", alpha=0.85)
+    axes[0].axvline(0, color="black", linestyle="--", linewidth=0.8)
+    axes[0].set_title("Distribusi USDIDR_Returns Aktual (Data Uji)")
+    axes[0].set_xlabel("Returns (%)")
+    axes[0].set_ylabel("Frekuensi")
+    axes[0].grid(True, alpha=0.3)
+
+    axes[1].scatter(
+        hasil_df["Actual"], hasil_df["Hybrid_Pred"], alpha=0.5, s=18, color="#ea580c"
+    )
+    lims = [
+        min(hasil_df["Actual"].min(), hasil_df["Hybrid_Pred"].min()),
+        max(hasil_df["Actual"].max(), hasil_df["Hybrid_Pred"].max()),
+    ]
+    axes[1].plot(lims, lims, color="black", linestyle="--", linewidth=0.8, label="Prediksi Sempurna")
+    axes[1].set_title("Aktual vs Prediksi Hibrida")
+    axes[1].set_xlabel("Actual (%)")
+    axes[1].set_ylabel("Predicted (%)")
+    axes[1].legend()
+    axes[1].grid(True, alpha=0.3)
+
+    fig.tight_layout()
+    return fig
+
+
+def plot_price_overview(df1: pd.DataFrame):
+    fig, ax = plt.subplots(figsize=(13, 4.5))
+    ax.plot(df1["Date"], df1["USDIDR"], color="#16a34a")
+    ax.set_title("Pergerakan Kurs USDIDR (Setelah Koreksi Outlier)")
+    ax.set_xlabel("Tanggal")
+    ax.set_ylabel("USDIDR")
+    ax.grid(True, alpha=0.3)
+    return fig
+
+
 def show_metrics(metrics_arima, metrics_hybrid):
     col1, col2 = st.columns(2)
     with col1:
@@ -114,6 +189,12 @@ def run_with_saved_artifacts():
         test_df = pd.read_csv(os.path.join(MODELS_DIR, "usdidr_test_df.csv"))
         test_df["Date"] = pd.to_datetime(test_df["Date"])
 
+        train_path = os.path.join(MODELS_DIR, "usdidr_train_df.csv")
+        train_df = None
+        if os.path.exists(train_path):
+            train_df = pd.read_csv(train_path)
+            train_df["Date"] = pd.to_datetime(train_df["Date"])
+
         from src.preprocessing import LAG_FEATURE_COLUMNS
         from src.model_utils import create_sequences
 
@@ -131,6 +212,18 @@ def run_with_saved_artifacts():
     st.subheader("Perbandingan Prediksi vs Aktual")
     fig = plot_forecast(hasil_df, metrics_arima["r2"], metrics_hybrid["r2"])
     st.pyplot(fig)
+
+    if train_df is not None:
+        st.subheader("Residual ARIMA (Data Latih vs Data Uji)")
+        st.pyplot(plot_residuals(train_df, test_df))
+
+    st.subheader("Distribusi Return & Ketepatan Prediksi")
+    st.pyplot(plot_returns_distribution(hasil_df))
+
+    if train_df is not None:
+        st.subheader("Matriks Korelasi Antar Variabel")
+        combined_df = pd.concat([train_df, test_df], ignore_index=True)
+        st.pyplot(plot_correlation_heatmap(combined_df))
 
     st.subheader("Metrik Evaluasi")
     show_metrics(metrics_arima, metrics_hybrid)
@@ -176,6 +269,16 @@ def run_live_training(df_raw: pd.DataFrame, epochs: int, patience: int):
     st.subheader("Perbandingan Prediksi vs Aktual")
     fig = plot_forecast(hasil_df, metrics_arima["r2"], metrics_hybrid["r2"])
     st.pyplot(fig)
+
+    st.subheader("Residual ARIMA (Data Latih vs Data Uji)")
+    st.pyplot(plot_residuals(train_df, test_df))
+
+    st.subheader("Distribusi Return & Ketepatan Prediksi")
+    st.pyplot(plot_returns_distribution(hasil_df))
+
+    st.subheader("Matriks Korelasi Antar Variabel")
+    combined_df = pd.concat([train_df, test_df], ignore_index=True)
+    st.pyplot(plot_correlation_heatmap(combined_df))
 
     st.subheader("Metrik Evaluasi")
     show_metrics(metrics_arima, metrics_hybrid)
