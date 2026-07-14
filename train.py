@@ -16,6 +16,15 @@ import sys
 
 sys.path.append(os.path.dirname(__file__))
 
+import numpy as np
+import tensorflow as tf
+
+# Mengunci random seed agar hasil training (termasuk R², RMSE, MAE) konsisten
+# setiap kali skrip ini dijalankan ulang, selama data input juga tidak berubah.
+SEED = 42
+np.random.seed(SEED)
+tf.random.set_seed(SEED)
+
 from src.preprocessing import (
     load_raw_dataframe_from_kaggle,
     run_full_pipeline,
