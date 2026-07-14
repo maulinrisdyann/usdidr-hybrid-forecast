@@ -11,3 +11,4 @@ venv/
 # models/*.keras
 # models/*.pkl
 # models/*.joblib
+kaggle*.json
